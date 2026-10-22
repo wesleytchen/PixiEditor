@@ -131,6 +131,9 @@
         {
           "ToolName": "MagicWand"
         },
+        {
+          "ToolName": "SmartSelect"
+        },
         "Lasso",
         {
           "ToolName": "FloodFill",
@@ -212,6 +215,9 @@
           "Settings": {
             "ExposeTolerance": true
           }
+        },
+        {
+          "ToolName": "SmartSelect"
         },
         "Lasso",
         {

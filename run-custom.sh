@@ -9,8 +9,7 @@ if ! command -v dotnet >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ ! -f "$APP_DLL" ]]; then
-  dotnet build "$SCRIPT_DIR/src/PixiEditor.Desktop/PixiEditor.Desktop.csproj" -c Debug -r osx-arm64
-fi
+dotnet build "$SCRIPT_DIR/src/PixiEditor.Desktop/PixiEditor.Desktop.csproj" -c Debug -r osx-arm64
 
+cd "${APP_DLL:h}"
 exec dotnet "$APP_DLL" "$@"

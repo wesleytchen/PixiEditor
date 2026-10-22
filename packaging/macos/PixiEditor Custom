@@ -1,0 +1,7 @@
+#!/bin/zsh
+set -euo pipefail
+
+CONTENTS_DIR=${0:A:h:h}
+APP_DIR="$CONTENTS_DIR/Resources/app"
+cd "$APP_DIR"
+exec /opt/homebrew/bin/dotnet "$APP_DIR/PixiEditor.Desktop.dll" "$@"

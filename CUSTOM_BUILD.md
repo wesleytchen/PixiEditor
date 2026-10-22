@@ -4,13 +4,14 @@ This fork embeds the ASCII Magic-inspired effects directly in PixiEditor and add
 
 ## Run the macOS build
 
-Quit the installed PixiEditor first so macOS does not group both processes under the same application identity, then run:
+Create the local app bundle, then open it from Finder:
 
 ```sh
-./run-custom.sh
+./build-macos-app.sh
+open "dist/PixiEditor Custom.app"
 ```
 
-The current compiled executable targets Apple Silicon (`osx-arm64`) and uses .NET 10.
+The bundle has its own `PixiEditor Custom` identity, so it can coexist with the installed app. The current build targets Apple Silicon (`osx-arm64`) and uses the Homebrew .NET 10 runtime. For a quick terminal launch, use `./run-custom.sh`.
 
 ## Use the effects
 
