@@ -79,6 +79,8 @@ internal class DocumentToolsModule
 
     public void UseMagicWandTool() => Internals.ChangeController.TryStartExecutor<MagicWandToolExecutor>();
 
+    public void UseSmartSelectTool() => Internals.ChangeController.TryStartExecutor<SmartSelectToolExecutor>();
+
     public void UseBrushBasedTool(BrushBasedToolViewModel brushBasedToolViewModel) =>
         Internals.ChangeController.TryStartExecutor(new BrushBasedExecutor(brushBasedToolViewModel));
     public void UseTextTool()

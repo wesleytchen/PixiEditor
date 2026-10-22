@@ -1,0 +1,64 @@
+// Glass — selectable ASCII Magic-inspired family for PixiEditor
+// Effect is an integer selector. Amount: -1=bypass, 0=default, 1=strong.
+uniform shader iImage;
+uniform float2 iResolution;
+uniform float iNormalizedTime;
+uniform int Effect;
+uniform float Amount;
+uniform float Scale;
+uniform float Seed;
+
+float sat(float x) { return clamp(x, 0.0, 1.0); }
+float hash21(float2 p) {
+    p = fract(p * float2(123.34, 456.21));
+    p += dot(p, p + 45.32 + Seed);
+    return fract(p.x * p.y);
+}
+float lum(half3 c) { return dot(c, half3(0.2126, 0.7152, 0.0722)); }
+half4 sampleImage(float2 p) { return iImage.eval(p); }
+half4 finish(half3 rgb, half a) { return half4(clamp(rgb, half3(0.0), half3(1.0)) * a, a); }
+half3 straight(half4 c) { return c.a > 0.0001 ? c.rgb / c.a : half3(0.0); }
+
+// Effect values:
+//   0: Frosted Glass
+//   1: Tinted Glass
+//   2: Shatter
+//   3: Vitrine
+//   4: Glass Orb
+//   5: Fluted Glass
+//   6: Cross Reeded
+//   7: Hammered
+//   8: Diamond Glass
+//   9: Hexagon
+//   10: Ripple (Glass)
+//   11: Ice Crackle
+//   12: Chevron Prism
+//   13: Seedy Bubbles
+//   14: Glass Pixel
+//   15: Jello
+//   16: Glass
+half4 main(float2 xy) {
+    int EFFECT = Effect + 0;
+    float strength=sat(1.0+Amount); float sc=exp2(Scale); float2 c=iResolution*.5; float2 p=(xy-c)/max(iResolution.y,1.0);
+    float2 uv=xy; float highlight=0.0; float n=hash21(floor(xy/(8.0*sc)));
+    if (EFFECT==0) uv+=(float2(hash21(floor(xy/(5.0*sc))),hash21(floor(xy/(5.0*sc))+9.0))-.5)*10.0*strength;
+    else if (EFFECT==1) { uv.x+=sin(xy.y*.04)*6.0; highlight=.12; }
+    else if (EFFECT==2) { float a=floor((atan(p.y,p.x)+3.14159)*7.0)/7.0; uv+=float2(cos(a),sin(a))*(hash21(float2(a,Seed))-.5)*28.0; }
+    else if (EFFECT==3) { uv+=float2(sin(xy.y*.05),sin(xy.x*.04))*9.0; highlight=.08*sin(xy.x*.12); }
+    else if (EFFECT==4) { float r=length(p); float k=sqrt(max(.08,1.0-r*r*3.0)); uv=c+p*iResolution.y*mix(1.0,k,strength*step(r,.56)); highlight=pow(max(0.0,1.0-r*1.8),8.0); }
+    else if (EFFECT==5) uv.x+=sin(xy.x/(9.0*sc))*12.0*strength;
+    else if (EFFECT==6) uv+=float2(sin(xy.x/(10.0*sc)),sin(xy.y/(10.0*sc)))*9.0;
+    else if (EFFECT==7) uv+=(float2(n,hash21(floor(xy/(8.0*sc))+3.0))-.5)*15.0;
+    else if (EFFECT==8) { float2 q=fract(xy/(20.0*sc))-.5; uv+=normalize(q+float2(.001))*8.0; highlight=step(.42,abs(q.x)+abs(q.y))*.14; }
+    else if (EFFECT==9) { float2 q=fract(xy/(22.0*sc))-.5; uv+=normalize(q+float2(.001))*6.0; }
+    else if (EFFECT==10) { float r=length(p); uv+=normalize(p+float2(.001))*sin(r*70.0/sc)*8.0; }
+    else if (EFFECT==11) { float crack=step(.47,abs(fract(sin(dot(floor(xy/(10.0*sc)),float2(12.98,78.23)))*43758.5)-.5)); uv+=float2(crack,-crack)*5.0; highlight=crack*.2; }
+    else if (EFFECT==12) uv.x+=abs(fract(xy.y/(30.0*sc))-.5)*20.0-5.0;
+    else if (EFFECT==13) { float2 q=fract(xy/(24.0*sc))-.5; float d=length(q); uv+=normalize(q+float2(.001))*6.0*step(d,.32); highlight=smoothstep(.26,.32,d)*step(d,.36)*.2; }
+    else if (EFFECT==14) { float cell=12.0*sc; uv=floor(xy/cell)*cell+cell*.5; }
+    else if (EFFECT==15) uv+=float2(sin(xy.y*.045+sin(xy.x*.02)),sin(xy.x*.04))*10.0;
+    else { uv+=float2(sin(xy.y*.025),cos(xy.x*.023))*5.0; highlight=.06; }
+    half4 src=sampleImage(xy); half3 rgb=straight(src); half3 fx=straight(sampleImage(uv))+half3(highlight);
+    if(EFFECT==1) fx*=half3(.78,.92,1.0);
+    return finish(mix(rgb,fx,half(strength)),src.a);
+}

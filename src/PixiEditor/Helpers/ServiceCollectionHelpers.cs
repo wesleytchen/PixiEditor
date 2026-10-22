@@ -99,6 +99,7 @@ internal static class ServiceCollectionHelpers
             .AddTool<IPenToolHandler, PenToolViewModel>()
             .AddTool<ISelectToolHandler, SelectToolViewModel>()
             .AddTool<IMagicWandToolHandler, MagicWandToolViewModel>()
+            .AddTool<ISmartSelectToolHandler, SmartSelectToolViewModel>()
             .AddTool<ILassoToolHandler, LassoToolViewModel>()
             .AddTool<IFloodFillToolHandler, FloodFillToolViewModel>()
             .AddTool<ILineToolHandler, RasterLineToolViewModel>()

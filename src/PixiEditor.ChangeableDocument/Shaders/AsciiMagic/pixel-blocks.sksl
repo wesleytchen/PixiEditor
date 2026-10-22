@@ -1,0 +1,90 @@
+// Pixel & Blocks — selectable ASCII Magic-inspired family for PixiEditor
+// Effect is an integer selector. Amount: -1=bypass, 0=default, 1=strong.
+uniform shader iImage;
+uniform float2 iResolution;
+uniform float iNormalizedTime;
+uniform int Effect;
+uniform float Amount;
+uniform float Scale;
+uniform float Seed;
+
+float sat(float x) { return clamp(x, 0.0, 1.0); }
+float hash21(float2 p) {
+    p = fract(p * float2(123.34, 456.21));
+    p += dot(p, p + 45.32 + Seed);
+    return fract(p.x * p.y);
+}
+float lum(half3 c) { return dot(c, half3(0.2126, 0.7152, 0.0722)); }
+half4 sampleImage(float2 p) { return iImage.eval(p); }
+half4 finish(half3 rgb, half a) { return half4(clamp(rgb, half3(0.0), half3(1.0)) * a, a); }
+half3 straight(half4 c) { return c.a > 0.0001 ? c.rgb / c.a : half3(0.0); }
+
+// Effect values:
+//   0: Pixel Art
+//   1: Mosaic
+//   2: LEGO
+//   3: Voxel
+//   4: Hex Mosaic
+//   5: LED Matrix
+half4 main(float2 xy) {
+    int EFFECT = Effect + 6;
+    float strength = sat(1.0 + Amount);
+    float cell = max(2.0, 9.0 * exp2(Scale));
+    if (EFFECT == 6) cell = max(1.0, 5.0 * exp2(Scale));
+    if (EFFECT == 10) cell = max(3.0, 11.0 * exp2(Scale));
+    float2 id = floor(xy / cell);
+    float2 q = fract(xy / cell) - 0.5;
+    float2 center = (id + 0.5) * cell;
+    half4 src = sampleImage(center);
+    half3 rgb = straight(src);
+    float l = float(lum(rgb));
+    float mask = 1.0;
+    half3 ink = rgb;
+
+    if (EFFECT == 0 || EFFECT == 1 || EFFECT == 4) {
+        float band = floor(l * 8.0);
+        float a = abs(q.x) + abs(q.y);
+        float bars = step(abs(q.x), 0.08 + 0.03 * band) + step(abs(q.y), 0.04 + 0.025 * band);
+        float diag = step(abs(q.x + q.y), 0.055 + 0.015 * band);
+        mask = sat((bars + diag) * step(a, 0.72));
+        if (EFFECT == 0) ink = half3(l);
+        if (EFFECT == 1) ink = mix(half3(l), rgb, half(0.65));
+        if (EFFECT == 4) mask *= step(hash21(id + band), l + 0.15);
+    } else if (EFFECT == 2) {
+        mask = step(abs(q.x), 0.12 + 0.38 * l) * step(abs(q.y), 0.12 + 0.38 * l);
+        ink = half3(l);
+    } else if (EFFECT == 3) {
+        mask = 1.0 - smoothstep(0.12 + 0.30 * l, 0.18 + 0.30 * l, length(q));
+        ink = half3(l);
+    } else if (EFFECT == 5) {
+        float2 sub = fract(q * 2.0 + 0.5) - 0.5;
+        float dots = 1.0 - smoothstep(0.12, 0.20, length(sub));
+        mask = dots * step(hash21(floor(xy / (cell * 0.5))), l);
+        ink = half3(l);
+    } else if (EFFECT == 6) {
+        mask = 1.0;
+    } else if (EFFECT == 7) {
+        float grout = step(max(abs(q.x), abs(q.y)), 0.44);
+        mask = grout;
+        ink = rgb * half(0.82 + 0.25 * hash21(id));
+    } else if (EFFECT == 8) {
+        float stud = 1.0 - smoothstep(0.20, 0.34, length(q));
+        mask = step(max(abs(q.x), abs(q.y)), 0.46);
+        ink = rgb * half(0.72 + 0.38 * stud);
+    } else if (EFFECT == 9) {
+        float top = step(q.y, -abs(q.x) * 0.5 + 0.05);
+        ink = rgb * half(mix(0.58, 1.18, top));
+        mask = step(max(abs(q.x), abs(q.y)), 0.47);
+    } else if (EFFECT == 10) {
+        float2 hq = q; hq.x *= 1.15;
+        float hex = max(abs(hq.x) * 0.866 + abs(hq.y) * 0.5, abs(hq.y));
+        mask = 1.0 - smoothstep(0.40, 0.47, hex);
+    } else {
+        float dotm = 1.0 - smoothstep(0.18, 0.28, length(q));
+        mask = dotm * step(0.5 - l * 0.38, dotm);
+        ink = rgb * half(0.65 + 0.55 * dotm);
+    }
+    half3 bg = (EFFECT <= 5) ? half3(0.035) : half3(0.0);
+    half3 outc = mix(rgb, mix(bg, ink, half(mask)), half(strength));
+    return finish(outc, src.a);
+}

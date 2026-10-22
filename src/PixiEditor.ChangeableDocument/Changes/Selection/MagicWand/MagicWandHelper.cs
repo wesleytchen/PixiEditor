@@ -432,7 +432,7 @@ internal class MagicWandHelper
         }
     }
 
-    private static VectorPath BuildContour(Lines lines)
+    internal static VectorPath BuildContour(Lines lines)
     {
         VectorPath selection = new();
 

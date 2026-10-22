@@ -43,4 +43,8 @@
     <ProjectReference Include="..\PixiEditor.ChangeableDocument.Gen\PixiEditor.ChangeableDocument.Gen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Shaders/AsciiMagic/*.sksl" />
+  </ItemGroup>
+
 </Project>

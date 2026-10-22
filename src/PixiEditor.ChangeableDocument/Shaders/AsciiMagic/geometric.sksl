@@ -1,0 +1,60 @@
+// Geometric — selectable ASCII Magic-inspired family for PixiEditor
+// Effect is an integer selector. Amount: -1=bypass, 0=default, 1=strong.
+uniform shader iImage;
+uniform float2 iResolution;
+uniform float iNormalizedTime;
+uniform int Effect;
+uniform float Amount;
+uniform float Scale;
+uniform float Seed;
+
+float sat(float x) { return clamp(x, 0.0, 1.0); }
+float hash21(float2 p) {
+    p = fract(p * float2(123.34, 456.21));
+    p += dot(p, p + 45.32 + Seed);
+    return fract(p.x * p.y);
+}
+float lum(half3 c) { return dot(c, half3(0.2126, 0.7152, 0.0722)); }
+half4 sampleImage(float2 p) { return iImage.eval(p); }
+half4 finish(half3 rgb, half a) { return half4(clamp(rgb, half3(0.0), half3(1.0)) * a, a); }
+half3 straight(half4 c) { return c.a > 0.0001 ? c.rgb / c.a : half3(0.0); }
+
+// Effect values:
+//   0: Cross
+//   1: Diamond
+//   2: Lines
+//   3: Diagonal
+//   4: Specimen
+//   5: Low Poly
+//   6: Droste
+//   7: Truchet
+//   8: Iso Extrude
+//   9: Flow Field
+//   10: Lattice
+//   11: Topography
+//   12: Forms
+//   13: Schematic
+//   14: Neon Grid
+half4 main(float2 xy) {
+    int EFFECT = Effect + 0;
+    float strength=sat(1.0+Amount); float sc=max(4.0,18.0*exp2(Scale));
+    half4 src=sampleImage(xy); half3 rgb=straight(src); float l=float(lum(rgb));
+    float2 p=xy/sc; float2 q=fract(p)-.5; float2 id=floor(p); float pat=0.0; half3 fx=rgb;
+    if (EFFECT==0) pat=step(abs(q.x),.09)+step(abs(q.y),.09);
+    else if (EFFECT==1) pat=1.0-smoothstep(.28,.38,abs(q.x)+abs(q.y));
+    else if (EFFECT==2) pat=step(.72,abs(sin(xy.y/sc*3.14159)));
+    else if (EFFECT==3) pat=step(.78,abs(sin((xy.x+xy.y)/sc*3.14159)));
+    else if (EFFECT==4) { pat=step(.82,abs(sin(q.x*18.0)))+step(.85,abs(sin(q.y*18.0))); fx=half3(l,1.0-l,.55+.45*sin(l*6.28)); }
+    else if (EFFECT==5) { float tri=abs(fract(p.x+p.y*.5)-.5); pat=step(tri,.15+.28*l); fx=rgb*half(.65+.45*hash21(id)); }
+    else if (EFFECT==6) { float2 c=iResolution*.5; float2 v=xy-c; float r=max(length(v),1.0); float2 uv=c+v*(.62+.28*sin(log(r)*5.0)); fx=straight(sampleImage(uv)); pat=1.0; }
+    else if (EFFECT==7) { float a=step(q.x,q.y); pat=step(.08,abs(length(q-float2(a*.5-.25,.25-a*.5))-.27)); }
+    else if (EFFECT==8) { pat=step(.72,abs(sin((q.x+q.y)*6.28))); fx=rgb*half(.7+.5*step(q.y,q.x*.5)); }
+    else if (EFFECT==9) { float f=sin(p.x*2.1+sin(p.y*1.7+Seed))*0.22; pat=1.0-smoothstep(.03,.09,abs(q.y-f)); }
+    else if (EFFECT==10) { pat=step(.88,abs(sin(p.x*3.14159)))+step(.88,abs(sin(p.y*3.14159))); fx=half3(rgb.r*.7+.3,rgb.g,.9); }
+    else if (EFFECT==11) { pat=1.0-smoothstep(.035,.09,abs(fract((l+hash21(id)*.08)*8.0)-.5)); fx=half3(.08,.10,.07)+half3(.45,.72,.42)*half(pat); }
+    else if (EFFECT==12) { float blob=sin(p.x*2.0)+sin(p.y*2.4)+sin((p.x+p.y)*1.3); pat=smoothstep(.1,.45,abs(blob)); fx=rgb*half(.6)+half3(.4+.3*sin(blob),.25+.25*cos(blob),.5); }
+    else if (EFFECT==13) { pat=step(.93,abs(sin(p.x*6.28)))+step(.93,abs(sin(p.y*6.28))); fx=half3(.08,.72,.78)*half(pat)+half3(.03,.07,.09); }
+    else { pat=step(.82,abs(sin(p.x*3.14159)))+step(.82,abs(sin(p.y*3.14159))); fx=half3(.05,.2,.28)+half3(.05,.85,.95)*half(pat); }
+    if (EFFECT<6 || (EFFECT>=7 && EFFECT<=10)) fx=mix(half3(.035),rgb,half(sat(pat)*(.35+.65*l)));
+    return finish(mix(rgb,fx,half(strength)),src.a);
+}

@@ -1,0 +1,40 @@
+// Blur & Focus — selectable ASCII Magic-inspired family for PixiEditor
+// Effect is an integer selector. Amount: -1=bypass, 0=default, 1=strong.
+uniform shader iImage;
+uniform float2 iResolution;
+uniform float iNormalizedTime;
+uniform int Effect;
+uniform float Amount;
+uniform float Scale;
+uniform float Seed;
+
+float sat(float x) { return clamp(x, 0.0, 1.0); }
+float hash21(float2 p) {
+    p = fract(p * float2(123.34, 456.21));
+    p += dot(p, p + 45.32 + Seed);
+    return fract(p.x * p.y);
+}
+float lum(half3 c) { return dot(c, half3(0.2126, 0.7152, 0.0722)); }
+half4 sampleImage(float2 p) { return iImage.eval(p); }
+half4 finish(half3 rgb, half a) { return half4(clamp(rgb, half3(0.0), half3(1.0)) * a, a); }
+half3 straight(half4 c) { return c.a > 0.0001 ? c.rgb / c.a : half3(0.0); }
+
+// Effect values:
+//   0: Motion Blur
+//   1: Tilt-Shift
+//   2: Gaussian Blur
+//   3: Radial Blur
+half4 main(float2 xy) {
+    int EFFECT = Effect + 0;
+    float strength=sat(1.0+Amount); float radius=(3.0+7.0*strength)*exp2(Scale); float2 c=iResolution*.5;
+    half4 sum=half4(0.0); float wsum=0.0;
+    for (int i=-6;i<=6;i++) {
+        float t=float(i)/6.0; float w=exp(-t*t*2.5); float2 off=float2(0.0);
+        if (EFFECT==0) off=float2(radius*t,radius*t*.28);
+        else if (EFFECT==1) { float focus=sat(abs(xy.y-c.y)/max(iResolution.y*.45,1.0)); off=float2(radius*t*focus,0.0); }
+        else if (EFFECT==2) off=float2(radius*t, radius*sin(t*12.0)*.22);
+        else off=(xy-c)*t*radius/max(iResolution.y,1.0);
+        sum += sampleImage(xy+off)*half(w); wsum += w;
+    }
+    return mix(sampleImage(xy),sum/half(wsum),half(strength));
+}
