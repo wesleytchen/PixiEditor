@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using PixiEditor.UI.Common.Localization;
 
 namespace PixiEditor.Helpers.Converters;
@@ -30,8 +31,24 @@ internal class EnumToLocalizedStringConverter : SingleInstanceConverter<EnumToLo
             return EnumHelpers.GetDescription(enumValue);
         }
 
+        if (enumValue.GetType().Namespace ==
+            "PixiEditor.ChangeableDocument.Changeables.Graph.Nodes.Effects" &&
+            enumValue.GetType().Name.EndsWith("Effect"))
+        {
+            return HumanizeAsciiMagicEffect(enumValue.ToString());
+        }
+
         ThrowUntranslatedEnumValue(enumValue);
         return enumValue;
+    }
+
+    private static string HumanizeAsciiMagicEffect(string name)
+    {
+        if (name == "Anaglyph3D") return "Anaglyph 3D";
+        if (name == "Lofi") return "Lo-fi";
+
+        string withAcronymsSplit = Regex.Replace(name, "([A-Z])([A-Z][a-z])", "$1 $2");
+        return Regex.Replace(withAcronymsSplit, "([a-z])([A-Z])", "$1 $2");
     }
 
     [Conditional("DEBUG")]

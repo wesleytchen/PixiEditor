@@ -18,25 +18,26 @@ public abstract class AsciiMagicNode<TEffect> : RenderNode, IRenderInput where T
 {
     public RenderInputProperty Background { get; }
     public InputProperty<TEffect> Effect { get; }
-    public InputProperty<double> Amount { get; }
-    public InputProperty<double> Scale { get; }
-    public InputProperty<double> Seed { get; }
+    public InputProperty<double> Strength { get; }
+    public InputProperty<double> Size { get; }
 
     private readonly string shaderCode;
     private readonly Paint paint = new() { BlendMode = BlendMode.Src };
+    private readonly double sizeAtNormalScale;
     private Shader? shader;
     private Shader? imageShader;
 
     protected override bool ExecuteOnlyOnCacheChange => true;
     protected override CacheTriggerFlags CacheTrigger => CacheTriggerFlags.All;
 
-    protected AsciiMagicNode(string shaderFileName, TEffect defaultEffect)
+    protected AsciiMagicNode(string shaderFileName, TEffect defaultEffect, string sizeLabel,
+        double defaultSize, double sizeAtNormalScale, double minimumSize, double maximumSize)
     {
         Background = CreateRenderInput("Background", "BACKGROUND");
-        Effect = CreateInput("Effect", "EFFECT", defaultEffect);
-        Amount = CreateInput("Amount", "AMOUNT", 0d).WithRules(v => v.Min(-1).Max(1));
-        Scale = CreateInput("Scale", "SCALE", 0d).WithRules(v => v.Min(-2).Max(3));
-        Seed = CreateInput("Seed", "SEED", 0d).WithRules(v => v.Min(0).Max(1000));
+        Effect = CreateInput("Effect", "ASCII_MAGIC_FILTER", defaultEffect);
+        Strength = CreateInput("Amount", "ASCII_MAGIC_STRENGTH", 100d).WithRules(v => v.Min(0).Max(100));
+        Size = CreateInput("Scale", sizeLabel, defaultSize).WithRules(v => v.Min(minimumSize).Max(maximumSize));
+        this.sizeAtNormalScale = sizeAtNormalScale;
 
         shaderCode = LoadShader(shaderFileName);
         Output.FirstInChain = null;
@@ -83,9 +84,11 @@ public abstract class AsciiMagicNode<TEffect> : RenderNode, IRenderInput where T
         uniforms.Add("iResolution", new Uniform("iResolution", (VecD)context.RenderOutputSize));
         uniforms.Add("iNormalizedTime", new Uniform("iNormalizedTime", (float)context.FrameTime.NormalizedTime));
         uniforms.Add("Effect", new Uniform("Effect", Convert.ToInt32(Effect.Value)));
-        uniforms.Add("Amount", new Uniform("Amount", (float)Amount.Value));
-        uniforms.Add("Scale", new Uniform("Scale", (float)Scale.Value));
-        uniforms.Add("Seed", new Uniform("Seed", (float)Seed.Value));
+        // The shaders use compact technical ranges internally. The node deliberately exposes
+        // familiar percentages and pixel sizes instead, and keeps procedural variation stable.
+        uniforms.Add("Amount", new Uniform("Amount", (float)(Strength.Value / 100d - 1d)));
+        uniforms.Add("Scale", new Uniform("Scale", (float)Math.Log2(Size.Value / sizeAtNormalScale)));
+        uniforms.Add("Seed", new Uniform("Seed", 0f));
         return uniforms;
     }
 
@@ -101,61 +104,71 @@ public abstract class AsciiMagicNode<TEffect> : RenderNode, IRenderInput where T
 }
 
 [NodeInfo("AsciiMagicAsciiText")]
-public sealed class AsciiMagicAsciiTextNode() : AsciiMagicNode<AsciiTextEffect>("ascii-text.sksl", AsciiTextEffect.Characters)
+public sealed class AsciiMagicAsciiTextNode() : AsciiMagicNode<AsciiTextEffect>("ascii-text.sksl", AsciiTextEffect.Characters,
+    "ASCII_MAGIC_CHARACTER_SIZE", 11, 9, 2, 72)
 {
     public override Node CreateCopy() => new AsciiMagicAsciiTextNode();
 }
 
 [NodeInfo("AsciiMagicPixelBlocks")]
-public sealed class AsciiMagicPixelBlocksNode() : AsciiMagicNode<PixelBlocksEffect>("pixel-blocks.sksl", PixelBlocksEffect.PixelArt)
+public sealed class AsciiMagicPixelBlocksNode() : AsciiMagicNode<PixelBlocksEffect>("pixel-blocks.sksl", PixelBlocksEffect.PixelArt,
+    "ASCII_MAGIC_BLOCK_SIZE", 9, 9, 2, 96)
 {
     public override Node CreateCopy() => new AsciiMagicPixelBlocksNode();
 }
 
 [NodeInfo("AsciiMagicPrintPaper")]
-public sealed class AsciiMagicPrintPaperNode() : AsciiMagicNode<PrintPaperEffect>("print-paper.sksl", PrintPaperEffect.Dither)
+public sealed class AsciiMagicPrintPaperNode() : AsciiMagicNode<PrintPaperEffect>("print-paper.sksl", PrintPaperEffect.Dither,
+    "ASCII_MAGIC_DOT_SIZE", 6, 6, 2, 64)
 {
     public override Node CreateCopy() => new AsciiMagicPrintPaperNode();
 }
 
 [NodeInfo("AsciiMagicGeometric")]
-public sealed class AsciiMagicGeometricNode() : AsciiMagicNode<GeometricEffect>("geometric.sksl", GeometricEffect.Cross)
+public sealed class AsciiMagicGeometricNode() : AsciiMagicNode<GeometricEffect>("geometric.sksl", GeometricEffect.Cross,
+    "ASCII_MAGIC_PATTERN_SIZE", 18, 18, 4, 144)
 {
     public override Node CreateCopy() => new AsciiMagicGeometricNode();
 }
 
 [NodeInfo("AsciiMagicDistort")]
-public sealed class AsciiMagicDistortNode() : AsciiMagicNode<DistortEffect>("distort.sksl", DistortEffect.Smudge)
+public sealed class AsciiMagicDistortNode() : AsciiMagicNode<DistortEffect>("distort.sksl", DistortEffect.Smudge,
+    "ASCII_MAGIC_DISTORTION_SCALE", 100, 100, 25, 400)
 {
     public override Node CreateCopy() => new AsciiMagicDistortNode();
 }
 
 [NodeInfo("AsciiMagicBlurFocus")]
-public sealed class AsciiMagicBlurFocusNode() : AsciiMagicNode<BlurFocusEffect>("blur-focus.sksl", BlurFocusEffect.MotionBlur)
+public sealed class AsciiMagicBlurFocusNode() : AsciiMagicNode<BlurFocusEffect>("blur-focus.sksl", BlurFocusEffect.MotionBlur,
+    "ASCII_MAGIC_BLUR_RADIUS", 10, 10, 1, 80)
 {
     public override Node CreateCopy() => new AsciiMagicBlurFocusNode();
 }
 
 [NodeInfo("AsciiMagicGlitchSignal")]
-public sealed class AsciiMagicGlitchSignalNode() : AsciiMagicNode<GlitchSignalEffect>("glitch-signal.sksl", GlitchSignalEffect.CRTScreen)
+public sealed class AsciiMagicGlitchSignalNode() : AsciiMagicNode<GlitchSignalEffect>("glitch-signal.sksl", GlitchSignalEffect.CRTScreen,
+    "ASCII_MAGIC_GLITCH_SIZE", 100, 100, 25, 400)
 {
     public override Node CreateCopy() => new AsciiMagicGlitchSignalNode();
 }
 
 [NodeInfo("AsciiMagicLightColor")]
-public sealed class AsciiMagicLightColorNode() : AsciiMagicNode<LightColorEffect>("light-color.sksl", LightColorEffect.Disco)
+public sealed class AsciiMagicLightColorNode() : AsciiMagicNode<LightColorEffect>("light-color.sksl", LightColorEffect.Disco,
+    "ASCII_MAGIC_PATTERN_SCALE", 100, 100, 25, 400)
 {
     public override Node CreateCopy() => new AsciiMagicLightColorNode();
 }
 
 [NodeInfo("AsciiMagicGlass")]
-public sealed class AsciiMagicGlassNode() : AsciiMagicNode<GlassEffect>("glass.sksl", GlassEffect.FrostedGlass)
+public sealed class AsciiMagicGlassNode() : AsciiMagicNode<GlassEffect>("glass.sksl", GlassEffect.FrostedGlass,
+    "ASCII_MAGIC_GLASS_PATTERN_SIZE", 100, 100, 25, 400)
 {
     public override Node CreateCopy() => new AsciiMagicGlassNode();
 }
 
 [NodeInfo("AsciiMagicMaterialTexture")]
-public sealed class AsciiMagicMaterialTextureNode() : AsciiMagicNode<MaterialTextureEffect>("material-texture.sksl", MaterialTextureEffect.Waves)
+public sealed class AsciiMagicMaterialTextureNode() : AsciiMagicNode<MaterialTextureEffect>("material-texture.sksl", MaterialTextureEffect.Waves,
+    "ASCII_MAGIC_TEXTURE_SIZE", 100, 100, 25, 400)
 {
     public override Node CreateCopy() => new AsciiMagicMaterialTextureNode();
 }

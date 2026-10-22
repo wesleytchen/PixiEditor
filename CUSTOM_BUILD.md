@@ -19,7 +19,9 @@ The bundle has its own `PixiEditor Custom` identity, so it can coexist with the 
 2. Add a node and search for **ASCII Magic**, or browse the **ASCII Magic** category.
 3. Choose one of the ten family nodes: ASCII & Text, Pixel & Blocks, Print & Paper, Geometric, Distort, Blur & Focus, Glitch & Signal, Light & Color, Glass, or Material & Texture.
 4. Connect an image or layer output to the node's **Background** input, then connect the node's output to the document **Output** node.
-5. Pick an effect from the family node's **Effect** dropdown. Use **Amount**, **Scale**, and **Seed** to tune it.
+5. Pick an effect from the family node's **Filter** dropdown. Use **Strength** and the plainly named size control—such as **Character size**, **Blur radius**, or **Texture size**—to tune it.
+
+The nodes intentionally hide shader terminology and procedural seeds. Strength is always shown as 0–100%, sizes use pixels where that is meaningful, and procedural patterns stay stable between renders.
 
 The family nodes contain all 106 effects represented by the shader pack.
 
