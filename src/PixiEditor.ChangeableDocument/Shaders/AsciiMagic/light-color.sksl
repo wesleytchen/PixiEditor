@@ -7,6 +7,12 @@ uniform int Effect;
 uniform float Amount;
 uniform float Scale;
 uniform float Seed;
+uniform float Opacity;
+uniform int Palette;
+uniform int Chroma;
+uniform float Brightness;
+uniform float Contrast;
+uniform int InvertColors;
 
 float sat(float x) { return clamp(x, 0.0, 1.0); }
 float hash21(float2 p) {
@@ -16,7 +22,54 @@ float hash21(float2 p) {
 }
 float lum(half3 c) { return dot(c, half3(0.2126, 0.7152, 0.0722)); }
 half4 sampleImage(float2 p) { return iImage.eval(p); }
-half4 finish(half3 rgb, half a) { return half4(clamp(rgb, half3(0.0), half3(1.0)) * a, a); }
+half3 applyFinishing(half3 rgb) {
+    rgb = clamp((rgb - half3(0.5)) * half(1.0 + Contrast) + half3(0.5 + Brightness),
+                half3(0.0), half3(1.0));
+    float l = float(lum(rgb));
+
+    if (Chroma == 1) rgb = half3(l);
+    else if (Chroma == 2) rgb = floor(rgb * half(7.0) + half(0.5)) / half(7.0);
+
+    if (Palette == 1) {
+        rgb = half3(step(0.5, l));
+    } else if (Palette == 2) {
+        rgb = half3(floor(l * 3.0 + 0.5) / 3.0);
+    } else if (Palette == 3) {
+        rgb = half3(floor(l * 7.0 + 0.5) / 7.0);
+    } else if (Palette == 4) {
+        rgb = l < 0.25 ? half3(0.06, 0.22, 0.06) :
+              (l < 0.5 ? half3(0.19, 0.38, 0.19) :
+              (l < 0.75 ? half3(0.55, 0.67, 0.32) : half3(0.79, 0.85, 0.49)));
+    } else if (Palette == 5) {
+        rgb = l < 0.33 ? half3(0.0, 0.0, 0.0) :
+              (l < 0.66 ? half3(0.0, 0.78, 0.78) : half3(0.78, 0.0, 0.78));
+    } else if (Palette == 6) {
+        rgb = l < 0.33 ? half3(0.0, 0.0, 0.0) :
+              (l < 0.66 ? half3(0.78, 0.0, 0.0) : half3(0.78, 0.78, 0.0));
+    } else if (Palette == 7) {
+        rgb = floor(rgb * half(3.0) + half(0.5)) / half(3.0);
+    } else if (Palette == 8) {
+        rgb = mix(half3(0.04, 0.02, 0.18), half3(1.0, 0.05, 0.72), half(l));
+        rgb = mix(rgb, half3(0.0, 0.95, 1.0), half(smoothstep(0.62, 1.0, l)));
+    } else if (Palette == 9) {
+        rgb = mix(half3(0.90, 0.72, 0.82), half3(0.70, 0.88, 0.91), half(l));
+        rgb = mix(rgb, half3(1.0, 0.91, 0.68), half(smoothstep(0.66, 1.0, l)));
+    } else if (Palette == 10) {
+        rgb = l < 0.38 ? half3(0.10, 0.18, 0.28) :
+              (l < 0.70 ? half3(0.90, 0.22, 0.20) : half3(0.96, 0.86, 0.64));
+    } else if (Palette == 11) {
+        rgb = half3(dot(rgb, half3(0.393, 0.769, 0.189)),
+                    dot(rgb, half3(0.349, 0.686, 0.168)),
+                    dot(rgb, half3(0.272, 0.534, 0.131)));
+    }
+
+    if (InvertColors != 0) rgb = half3(1.0) - rgb;
+    return clamp(rgb, half3(0.0), half3(1.0));
+}
+half4 finish(half3 rgb, half a) {
+    half alpha = a * half(Opacity);
+    return half4(applyFinishing(rgb) * alpha, alpha);
+}
 half3 straight(half4 c) { return c.a > 0.0001 ? c.rgb / c.a : half3(0.0); }
 
 // Effect values:

@@ -20,6 +20,12 @@ public abstract class AsciiMagicNode<TEffect> : RenderNode, IRenderInput where T
     public InputProperty<TEffect> Effect { get; }
     public InputProperty<double> Strength { get; }
     public InputProperty<double> Size { get; }
+    public InputProperty<double> Opacity { get; }
+    public InputProperty<AsciiMagicPalette> Palette { get; }
+    public InputProperty<AsciiMagicChroma> Chroma { get; }
+    public InputProperty<double> Brightness { get; }
+    public InputProperty<double> Contrast { get; }
+    public InputProperty<bool> InvertColors { get; }
 
     private readonly string shaderCode;
     private readonly Paint paint = new() { BlendMode = BlendMode.Src };
@@ -37,6 +43,12 @@ public abstract class AsciiMagicNode<TEffect> : RenderNode, IRenderInput where T
         Effect = CreateInput("Effect", "ASCII_MAGIC_FILTER", defaultEffect);
         Strength = CreateInput("Amount", "ASCII_MAGIC_STRENGTH", 100d).WithRules(v => v.Min(0).Max(100));
         Size = CreateInput("Scale", sizeLabel, defaultSize).WithRules(v => v.Min(minimumSize).Max(maximumSize));
+        Opacity = CreateInput("Opacity", "ASCII_MAGIC_OPACITY", 100d).WithRules(v => v.Min(0).Max(100));
+        Palette = CreateInput("Palette", "ASCII_MAGIC_PALETTE", AsciiMagicPalette.OriginalColors);
+        Chroma = CreateInput("Chroma", "ASCII_MAGIC_CHROMA", AsciiMagicChroma.Standard);
+        Brightness = CreateInput("Brightness", "ASCII_MAGIC_BRIGHTNESS", 0d).WithRules(v => v.Min(-100).Max(100));
+        Contrast = CreateInput("Contrast", "ASCII_MAGIC_CONTRAST", 0d).WithRules(v => v.Min(-100).Max(100));
+        InvertColors = CreateInput("InvertColors", "ASCII_MAGIC_INVERT_COLORS", false);
         this.sizeAtNormalScale = sizeAtNormalScale;
 
         shaderCode = LoadShader(shaderFileName);
@@ -89,6 +101,12 @@ public abstract class AsciiMagicNode<TEffect> : RenderNode, IRenderInput where T
         uniforms.Add("Amount", new Uniform("Amount", (float)(Strength.Value / 100d - 1d)));
         uniforms.Add("Scale", new Uniform("Scale", (float)Math.Log2(Size.Value / sizeAtNormalScale)));
         uniforms.Add("Seed", new Uniform("Seed", 0f));
+        uniforms.Add("Opacity", new Uniform("Opacity", (float)(Opacity.Value / 100d)));
+        uniforms.Add("Palette", new Uniform("Palette", Convert.ToInt32(Palette.Value)));
+        uniforms.Add("Chroma", new Uniform("Chroma", Convert.ToInt32(Chroma.Value)));
+        uniforms.Add("Brightness", new Uniform("Brightness", (float)(Brightness.Value / 100d)));
+        uniforms.Add("Contrast", new Uniform("Contrast", (float)(Contrast.Value / 100d)));
+        uniforms.Add("InvertColors", new Uniform("InvertColors", InvertColors.Value ? 1 : 0));
         return uniforms;
     }
 
@@ -183,3 +201,26 @@ public enum GlitchSignalEffect { CRTScreen, PixelSort, Forensics, DigitalDistort
 public enum LightColorEffect { Disco, Anaglyph3D, GradientMap, Prism, Dreamdust, LightWind, Kaleidoscope, Warpbloom, Duotone, EdgeGlow, Aberration }
 public enum GlassEffect { FrostedGlass, TintedGlass, Shatter, Vitrine, GlassOrb, FlutedGlass, CrossReeded, Hammered, DiamondGlass, Hexagon, RippleGlass, IceCrackle, ChevronPrism, SeedyBubbles, GlassPixel, Jello, Glass }
 public enum MaterialTextureEffect { Waves, OilPaint, Watercolor, Chrome, ThinFilm, Marble, MoltenMetal, Crystallize, Emboss, PetrolSheen, HeatTint }
+
+public enum AsciiMagicPalette
+{
+    OriginalColors,
+    Mono1Bit,
+    Gray4Levels,
+    Gray8Levels,
+    GameBoy,
+    CGAPalette0,
+    CGAPalette1,
+    Pico8,
+    Cyberpunk,
+    Pastel,
+    Risograph,
+    Sepia
+}
+
+public enum AsciiMagicChroma
+{
+    Standard,
+    LuminanceOnly,
+    PerChannelRGB
+}
